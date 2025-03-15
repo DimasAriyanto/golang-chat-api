@@ -1,0 +1,19 @@
+# Go-specific files
+*.log
+*.test
+*.out
+
+# Environment variables
+.env
+
+# IDE / Editor settings
+.idea/
+.vscode/
+*.swp
+
+# Dependency directories
+vendor/
+
+# OS generated files
+.DS_Store
+Thumbs.db
