@@ -60,13 +60,18 @@ cd golang-chat-api
 ### 2. Buat File Konfigurasi
 Buat file `.env` dan isi dengan konfigurasi berikut:
 ```
-DB_USER=root
-DB_PASS=your_password
+SERVER_PORT=8080
+
 DB_HOST=localhost
 DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=root
 DB_NAME=chat_db
 
-REDIS_ADDR=localhost:6379
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
 
 RABBITMQ_URL=amqp://guest:guest@localhost:5672/
 

@@ -7,26 +7,36 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var ctx = context.Background()
-
 type RedisCache struct {
-	Client *redis.Client
+	client *redis.Client
+	ctx    context.Context
 }
 
-func NewRedisCache(address, password string, db int) *RedisCache {
+func NewRedisCache(addr string, password string, db int) *RedisCache {
 	client := redis.NewClient(&redis.Options{
-		Addr:     address,
+		Addr:     addr,
 		Password: password,
 		DB:       db,
 	})
 
-	return &RedisCache{Client: client}
+	return &RedisCache{
+		client: client,
+		ctx:    context.Background(),
+	}
 }
 
-func (r *RedisCache) SetCache(key string, value string, expiration time.Duration) error {
-	return r.Client.Set(ctx, key, value, expiration).Err()
+func (c *RedisCache) SetCache(key string, value string, expiration time.Duration) error {
+	return c.client.Set(c.ctx, key, value, expiration).Err()
 }
 
-func (r *RedisCache) GetCache(key string) (string, error) {
-	return r.Client.Get(ctx, key).Result()
+func (c *RedisCache) GetCache(key string) (string, error) {
+	return c.client.Get(c.ctx, key).Result()
+}
+
+func (c *RedisCache) DeleteCache(key string) error {
+	return c.client.Del(c.ctx, key).Err()
+}
+
+func (c *RedisCache) Close() error {
+	return c.client.Close()
 }

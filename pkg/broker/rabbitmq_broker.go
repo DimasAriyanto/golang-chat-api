@@ -7,16 +7,16 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func PublishToQueue(msg string) error {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+func PublishToQueue(rabbitmqURL string, msg string) error {
+	conn, err := amqp.Dial(rabbitmqURL)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to RabbitMQ: %v", err)
+		return fmt.Errorf("failed to connect to RabbitMQ: %v", err)
 	}
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		return fmt.Errorf("Failed to open a channel: %v", err)
+		return fmt.Errorf("failed to open a channel: %v", err)
 	}
 	defer ch.Close()
 
@@ -29,7 +29,7 @@ func PublishToQueue(msg string) error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to declare a queue: %v", err)
+		return fmt.Errorf("failed to declare a queue: %v", err)
 	}
 
 	err = ch.Publish(
@@ -43,7 +43,7 @@ func PublishToQueue(msg string) error {
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to publish a message: %v", err)
+		return fmt.Errorf("failed to publish a message: %v", err)
 	}
 
 	log.Printf("[x] Sent: %s", msg)

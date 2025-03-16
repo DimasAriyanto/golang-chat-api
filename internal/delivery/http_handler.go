@@ -4,16 +4,18 @@ import (
 	"github.com/DimasAriyanto/golang-chat-api/internal/domain"
 	"github.com/DimasAriyanto/golang-chat-api/internal/usecase"
 	"github.com/DimasAriyanto/golang-chat-api/internal/middleware"
+	"github.com/DimasAriyanto/golang-chat-api/config"
 	"encoding/json"
 	"net/http"
 )
 
 type UserHandler struct {
-	UserUC *usecase.UserUseCase
+    UserUC *usecase.UserUseCase
+    Config config.Config
 }
 
-func NewUserHandler(userUC *usecase.UserUseCase) *UserHandler {
-	return &UserHandler{UserUC: userUC}
+func NewUserHandler(userUC *usecase.UserUseCase, cfg config.Config) *UserHandler {
+    return &UserHandler{UserUC: userUC, Config: cfg}
 }
 
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +51,6 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, _ := middleware.GenerateToken(user.ID)
+    token, _ := middleware.GenerateToken(user.ID, h.Config.JWTSecret)
 	json.NewEncoder(w).Encode(map[string]string{"token": token})
 }

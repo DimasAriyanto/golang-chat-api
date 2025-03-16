@@ -15,17 +15,27 @@ import (
 	"golang.org/x/time/rate"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+var (
+	upgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+	limiter = rate.NewLimiter(1, 5)
+
+	activeConnections = struct {
+		sync.RWMutex
+		conns map[int]*websocket.Conn
+	}{conns: make(map[int]*websocket.Conn)}
+
+	redisCache  *cache.RedisCache
+	rabbitmqURL string
+	jwtSecret   string
+)
+
+func InitWebSocket(cache *cache.RedisCache, rabbitURL string, secret string) {
+	redisCache = cache
+	rabbitmqURL = rabbitURL
+	jwtSecret = secret
 }
-
-var limiter = rate.NewLimiter(1, 5)
-var redisCache = cache.NewRedisCache("localhost:6379", "", 0)
-
-var activeConnections = struct {
-	sync.RWMutex
-	conns map[int]*websocket.Conn
-}{conns: make(map[int]*websocket.Conn)}
 
 type Message struct {
 	SenderID   int    `json:"sender_id"`
@@ -46,7 +56,7 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims, err := middleware.ParseToken(tokenString)
+	claims, err := middleware.ParseToken(tokenString, jwtSecret)
 	if err != nil {
 		http.Error(w, "Unauthorized - Invalid token", http.StatusUnauthorized)
 		return
@@ -66,6 +76,7 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Register new connection
 	activeConnections.Lock()
 	if prevConn, exists := activeConnections.conns[userIDInt]; exists {
 		prevConn.Close()
@@ -73,6 +84,7 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 	activeConnections.conns[userIDInt] = conn
 	activeConnections.Unlock()
 
+	// Clean up on disconnect
 	defer func() {
 		conn.Close()
 		activeConnections.Lock()
@@ -106,7 +118,7 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error caching message:", err)
 		}
 
-		if err := broker.PublishToQueue(string(messageJSON)); err != nil {
+		if err := broker.PublishToQueue(rabbitmqURL, string(messageJSON)); err != nil {
 			log.Println("Error publishing message to RabbitMQ:", err)
 			continue
 		}
@@ -121,6 +133,7 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeliverMessageToUser sends a message to a user if they have an active connection
 func DeliverMessageToUser(msg Message) {
 	activeConnections.RLock()
 	recipientConn, exists := activeConnections.conns[msg.ReceiverID]

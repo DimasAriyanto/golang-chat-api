@@ -9,15 +9,17 @@ import (
 	"github.com/DimasAriyanto/golang-chat-api/internal/domain"
 	"github.com/DimasAriyanto/golang-chat-api/pkg/broker"
 	"github.com/DimasAriyanto/golang-chat-api/pkg/cache"
+	"github.com/DimasAriyanto/golang-chat-api/config"
 )
 
 type ChatRepository struct {
 	DB    *sql.DB
 	Cache *cache.RedisCache
+    Config config.Config
 }
 
-func NewChatRepository(db *sql.DB, cache *cache.RedisCache) *ChatRepository {
-	return &ChatRepository{DB: db, Cache: cache}
+func NewChatRepository(db *sql.DB, cache *cache.RedisCache, cfg config.Config) *ChatRepository {
+	return &ChatRepository{DB: db, Cache: cache, Config: cfg}
 }
 
 func (r *ChatRepository) SaveMessage(chat domain.Chat) error {
@@ -33,7 +35,8 @@ func (r *ChatRepository) PublishMessage(chat domain.Chat) error {
 		return fmt.Errorf("failed to marshal chat: %v", err)
 	}
 
-	return broker.PublishToQueue(string(data))
+	rabbitmqURL := r.Config.RabbitMQURL
+	return broker.PublishToQueue(rabbitmqURL, string(data))
 }
 
 func (r *ChatRepository) GetCachedMessages(userID int) ([]domain.Chat, error) {
