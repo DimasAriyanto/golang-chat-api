@@ -6,6 +6,7 @@ import (
 	"github.com/DimasAriyanto/golang-chat-api/internal/repository"
 	"github.com/DimasAriyanto/golang-chat-api/internal/usecase"
 	"github.com/DimasAriyanto/golang-chat-api/pkg/cache"
+	"github.com/DimasAriyanto/golang-chat-api/internal/middleware"
 	"log"
 	"net/http"
 )
@@ -14,7 +15,7 @@ func main() {
 	db := config.ConnectDB()
 
 	redisCache := cache.NewRedisCache("localhost:6379", "", 0)
-	
+
 	userRepo := repository.NewUserRepository(db)
 	userUseCase := usecase.NewUserUseCase(userRepo)
 	userHandler := delivery.NewUserHandler(userUseCase)
@@ -25,8 +26,8 @@ func main() {
 	http.HandleFunc("/register", userHandler.RegisterUser)
 	http.HandleFunc("/login", userHandler.LoginUser)
 	http.HandleFunc("/ws", delivery.WsHandler)
-	http.HandleFunc("/send-message", chatHandler.SendMessageHandler)
-	http.HandleFunc("/chat-history", chatHandler.GetChatHistoryHandler)
+	http.Handle("/send-message", middleware.AuthMiddleware(http.HandlerFunc(chatHandler.SendMessageHandler)))
+	http.Handle("/chat-history", middleware.AuthMiddleware(http.HandlerFunc(chatHandler.GetChatHistoryHandler)))
 
 	go delivery.StartConsumer(chatRepo)
 

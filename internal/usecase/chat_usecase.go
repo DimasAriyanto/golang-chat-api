@@ -41,3 +41,11 @@ func (uc *ChatUseCase) GetChatHistory(userID int) ([]domain.Chat, error) {
 
 	return uc.ChatRepo.GetMessagesByUserID(userID)
 }
+
+func (uc *ChatUseCase) IsValidUser(userID int) (bool, error) {
+	user, err := uc.ChatRepo.GetUserByID(userID)
+	if err != nil || user.ID == 0 {
+		return false, errors.New("user not found")
+	}
+	return true, nil
+}

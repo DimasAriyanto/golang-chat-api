@@ -49,6 +49,6 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, _ := middleware.GenerateToken(user.Username)
+	token, _ := middleware.GenerateToken(user.ID)
 	json.NewEncoder(w).Encode(map[string]string{"token": token})
 }

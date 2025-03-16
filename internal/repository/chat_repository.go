@@ -77,3 +77,17 @@ func (r *ChatRepository) GetMessagesByUserID(userID int) ([]domain.Chat, error) 
 
 	return chats, nil
 }
+
+func (r *ChatRepository) GetUserByID(userID int) (domain.User, error) {
+	var user domain.User
+	query := `SELECT id, username, email FROM users WHERE id = ?`
+	row := r.DB.QueryRow(query, userID)
+
+	err := row.Scan(&user.ID, &user.Username, &user.Email)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	return user, nil
+}
+
