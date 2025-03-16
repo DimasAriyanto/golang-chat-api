@@ -1,4 +1,3 @@
-// File path: /pkg/broker/rabbitmq_broker.go
 package broker
 
 import (

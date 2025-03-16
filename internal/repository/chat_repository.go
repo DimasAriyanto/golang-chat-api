@@ -1,19 +1,30 @@
 package repository
 
 import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"time"
+
 	"github.com/DimasAriyanto/golang-chat-api/internal/domain"
 	"github.com/DimasAriyanto/golang-chat-api/pkg/broker"
 	"github.com/DimasAriyanto/golang-chat-api/pkg/cache"
-	"encoding/json"
-	"fmt"
 )
 
 type ChatRepository struct {
-	Cache cache.RedisCache
+	DB    *sql.DB
+	Cache *cache.RedisCache
 }
 
-func NewChatRepository(cache cache.RedisCache) *ChatRepository {
-	return &ChatRepository{Cache: cache}
+func NewChatRepository(db *sql.DB, cache *cache.RedisCache) *ChatRepository {
+	return &ChatRepository{DB: db, Cache: cache}
+}
+
+func (r *ChatRepository) SaveMessage(chat domain.Chat) error {
+	query := `INSERT INTO chat (sender_id, receiver_id, group_id, message, timestamp)
+              VALUES (?, ?, ?, ?, ?)`
+	_, err := r.DB.Exec(query, chat.SenderID, chat.ReceiverID, chat.GroupID, chat.Message, chat.Timestamp)
+	return err
 }
 
 func (r *ChatRepository) PublishMessage(chat domain.Chat) error {
@@ -25,16 +36,44 @@ func (r *ChatRepository) PublishMessage(chat domain.Chat) error {
 	return broker.PublishToQueue(string(data))
 }
 
-func (r *ChatRepository) GetLatestMessage() (domain.Chat, error) {
-	data, err := r.Cache.GetCache("latest_message")
+func (r *ChatRepository) GetCachedMessages(userID int) ([]domain.Chat, error) {
+	cacheKey := fmt.Sprintf("user:%d:chat_history", userID)
+	cachedData, err := r.Cache.GetCache(cacheKey)
 	if err != nil {
-		return domain.Chat{}, fmt.Errorf("failed to get latest message from cache: %v", err)
+		return nil, err
 	}
 
-	var chat domain.Chat
-	if err := json.Unmarshal([]byte(data), &chat); err != nil {
-		return domain.Chat{}, fmt.Errorf("failed to unmarshal chat: %v", err)
+	var chats []domain.Chat
+	if err := json.Unmarshal([]byte(cachedData), &chats); err != nil {
+		return nil, err
 	}
 
-	return chat, nil
+	return chats, nil
+}
+
+func (r *ChatRepository) GetMessagesByUserID(userID int) ([]domain.Chat, error) {
+	query := `SELECT id, sender_id, receiver_id, message, timestamp
+              FROM chat WHERE sender_id = ? OR receiver_id = ? ORDER BY timestamp DESC`
+
+	rows, err := r.DB.Query(query, userID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var chats []domain.Chat
+	for rows.Next() {
+		var chat domain.Chat
+		if err := rows.Scan(&chat.ID, &chat.SenderID, &chat.ReceiverID, &chat.Message, &chat.Timestamp); err != nil {
+			return nil, err
+		}
+		chats = append(chats, chat)
+	}
+
+	jsonData, err := json.Marshal(chats)
+	if err == nil {
+		r.Cache.SetCache(fmt.Sprintf("user:%d:chat_history", userID), string(jsonData), 10*time.Minute)
+	}
+
+	return chats, nil
 }

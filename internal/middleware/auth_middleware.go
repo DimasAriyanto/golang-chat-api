@@ -1,4 +1,3 @@
-// File path: /internal/middleware/auth_middleware.go
 package middleware
 
 import (

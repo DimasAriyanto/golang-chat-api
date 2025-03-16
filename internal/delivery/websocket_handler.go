@@ -21,7 +21,7 @@ var limiter = rate.NewLimiter(1, 5)
 
 var redisCache = cache.NewRedisCache("localhost:6379", "", 0)
 
-func wsHandler(w http.ResponseWriter, r *http.Request) {
+func WsHandler(w http.ResponseWriter, r *http.Request) {
 	if !limiter.Allow() {
 		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 		return
@@ -43,7 +43,6 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("Received: %s", msg)
 
-		// Simpan pesan ke cache Redis
 		err = redisCache.SetCache("latest_message", string(msg), 10*time.Minute)
 		if err != nil {
 			log.Println("Error caching message:", err)

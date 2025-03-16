@@ -1,4 +1,3 @@
-// File path: /config/db.go
 package config
 
 import (

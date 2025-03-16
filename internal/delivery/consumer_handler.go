@@ -1,12 +1,15 @@
 package delivery
 
 import (
+	"encoding/json"
 	"log"
 
+	"github.com/DimasAriyanto/golang-chat-api/internal/domain"
+	"github.com/DimasAriyanto/golang-chat-api/internal/repository"
 	"github.com/streadway/amqp"
 )
 
-func StartConsumer() {
+func StartConsumer(chatRepo *repository.ChatRepository) {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
@@ -44,14 +47,25 @@ func StartConsumer() {
 		log.Fatalf("Failed to register a consumer: %v", err)
 	}
 
-	forever := make(chan bool)
+	log.Println("Consumer started. Waiting for messages...")
 
 	go func() {
 		for msg := range msgs {
-			log.Printf("Received a message: %s", msg.Body)
+			log.Printf("Received a message from RabbitMQ: %s", msg.Body)
+
+			var chat domain.Chat
+			if err := json.Unmarshal(msg.Body, &chat); err != nil {
+				log.Printf("Failed to unmarshal message: %v", err)
+				continue
+			}
+
+			if err := chatRepo.SaveMessage(chat); err != nil {
+				log.Printf("Failed to save message to DB: %v", err)
+			} else {
+				log.Println("Message successfully saved to database.")
+			}
 		}
 	}()
 
-	log.Println("Consumer started. Waiting for messages...")
-	<-forever
+	select {}
 }

@@ -1,4 +1,3 @@
-// File path: /internal/delivery/http_handler.go
 package delivery
 
 import (
